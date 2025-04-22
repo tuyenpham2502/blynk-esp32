@@ -10,7 +10,8 @@
 #define BLYNK_TEMPLATE_NAME "Trạm khí tượng"
 char BLYNK_AUTH_TOKEN[33]="QLXXh7yTpJvKPF_t3LgL6iYXDbZ_M4cd";
 // Import required libraries
-#include <WiFi.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
 #include <WebServer.h>
@@ -102,6 +103,8 @@ SimpleKalmanFilter dustfilter(2, 2, 0.001);
 int dustValue = 10;
 // Khai bao LED
 #define LED           33
+// Khai bao RELAY
+#define RELAY         25
 // Khai báo BUZZER
 #define BUZZER        2
 uint32_t timeCountBuzzerWarning = 0;
@@ -131,8 +134,10 @@ void setup(){
   // Đọc data setup từ eeprom
   EEPROM.begin(512);
   readEEPROM();
-    // Khởi tạo LED
-  pinMode(LED, OUTPUT);
+    // Khởi tạo LED và RELAY
+    pinMode(LED, OUTPUT);
+    pinMode(RELAY, OUTPUT);
+    digitalWrite(RELAY, LOW);  // Initially off
   // Khởi tạo BUZZER
   pinMode(BUZZER, OUTPUT);
   digitalWrite(BUZZER, DISABLE);
@@ -955,6 +960,13 @@ void check_air_quality_and_send_to_blynk(bool autoWarning, int temp, int humi, i
   int dustIndex = 0;
   int humiIndex = 0;
   if(dht11ReadOK ==  true) {
+    // Control relay based on tempIndex
+    if(temp < EtempThreshold1 || temp > EtempThreshold2) {
+      digitalWrite(RELAY, HIGH); // Turn on relay when out of safe range
+    } else {
+      digitalWrite(RELAY, LOW);  // Turn off relay when in safe range
+    }
+    
   if(autoWarning == 0) {
     if(temp < EtempThreshold1 )tempIndex = 1;
     else if(temp >= EtempThreshold1 && temp <=  EtempThreshold2)  tempIndex = 2;
